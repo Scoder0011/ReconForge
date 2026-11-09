@@ -91,6 +91,7 @@ async def run_stage_05(ctx: "ScanContext", resolved_records: list[dict]) -> dict
     naabu_tool = next((tool for tool in tools if tool.name == "naabu"), None)
     nmap_tool = next((tool for tool in tools if tool.name == "nmap"), None)
     all_port_records: list[dict] = []
+    port_entries: list[dict] = []
 
     if naabu_tool is not None and ips:
         with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as handle:
