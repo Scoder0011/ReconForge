@@ -1,4 +1,4 @@
 in_scope: []
 out_of_scope: []
-allow_active_scans: true
+allow_active_scans: false
 allow_vuln_scans: true
