@@ -70,8 +70,20 @@ async def scan_result(scan_id: str, stage: str) -> Any:
 
 @router.get("/{scan_id}/report")
 async def scan_report(scan_id: str) -> FileResponse:
-    """Serve the generated HTML report for a scan."""
+    """Serve the generated HTML report or explain why it is not available yet."""
+    scan = await get_scan(scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan["status"] == "running":
+        raise HTTPException(
+            status_code=409,
+            detail="The scan is still running. The HTML report is available after it completes.",
+        )
+
     path = await _scan_dir(scan_id) / "report.html"
     if not path.is_file():
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Report not found. The scan may have been interrupted before report generation.",
+        )
     return FileResponse(path, media_type="text/html")
