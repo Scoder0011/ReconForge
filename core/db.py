@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -31,6 +32,19 @@ async def _connect() -> aiosqlite.Connection:
             output_dir TEXT NOT NULL
         )
         """
+    )
+    await connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS scan_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_id TEXT NOT NULL,
+            event_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    await connection.execute(
+        "CREATE INDEX IF NOT EXISTS scan_events_scan_id_id ON scan_events (scan_id, id)"
     )
     await connection.commit()
     return connection
@@ -94,6 +108,33 @@ async def get_scan(scan_id: str) -> dict[str, Any] | None:
 async def delete_scan(scan_id: str) -> bool:
     """Delete one scan-history entry without removing its output files."""
     async with _connection() as connection:
+        await connection.execute("DELETE FROM scan_events WHERE scan_id = ?", (scan_id,))
         cursor = await connection.execute("DELETE FROM scans WHERE id = ?", (scan_id,))
         await connection.commit()
         return cursor.rowcount > 0
+
+
+async def record_scan_event(scan_id: str, event: dict[str, Any]) -> None:
+    """Persist a progress event so the CLI and local API can share it across processes."""
+    event_json = json.dumps(event)
+    created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    async with _connection() as connection:
+        await connection.execute(
+            """
+            INSERT INTO scan_events (scan_id, event_json, created_at)
+            SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM scans WHERE id = ?)
+            """,
+            (scan_id, event_json, created_at, scan_id),
+        )
+        await connection.commit()
+
+
+async def list_scan_events(scan_id: str, after_event_id: int = 0) -> list[tuple[int, dict[str, Any]]]:
+    """Return persisted events after the supplied event id, ordered oldest first."""
+    async with _connection() as connection:
+        cursor = await connection.execute(
+            "SELECT id, event_json FROM scan_events WHERE scan_id = ? AND id > ? ORDER BY id",
+            (scan_id, after_event_id),
+        )
+        rows = await cursor.fetchall()
+    return [(row["id"], json.loads(row["event_json"])) for row in rows]

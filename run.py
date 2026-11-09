@@ -15,8 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.dependency_check import check_all, detect_os
-from core.db import create_scan, update_scan_status
-from core.events import event_bus
+from core.db import create_scan, record_scan_event, update_scan_status
 from core.engine import run_pipeline
 from core.installer import install_missing
 from core.logger import get_logger
@@ -110,7 +109,7 @@ async def _run_recorded_pipeline(domain: str, output_dir: Path, registry_path: P
     scan_id = await create_scan(domain, output_dir)
 
     async def publish(event: dict) -> None:
-        await event_bus.publish(scan_id, event)
+        await record_scan_event(scan_id, event)
 
     try:
         ctx = await run_pipeline(
@@ -122,10 +121,11 @@ async def _run_recorded_pipeline(domain: str, output_dir: Path, registry_path: P
             progress_callback=publish,
         )
     except asyncio.CancelledError:
-        await update_scan_status(scan_id, "cancelled")
         await publish({"stage": "pipeline", "status": "cancelled", "reason": "interrupted by user"})
+        await update_scan_status(scan_id, "cancelled")
         raise
     except Exception:
+        await publish({"stage": "pipeline", "status": "failed", "reason": "pipeline terminated with an unexpected error"})
         await update_scan_status(scan_id, "failed")
         raise
     status = "failed" if ctx.results.get("pipeline_error") else "completed"

@@ -28,7 +28,10 @@ not included because it generates requests to third-party providers.
 `python run.py --serve` starts the local API at
 `http://127.0.0.1:8000` and its API explorer at `/docs`. It exposes stored CLI
 scan history, results, reports, exports, scope settings, and tool availability.
-The dashboard can edit scope patterns and remove scan-history entries. Removing
-a history entry does not delete that scan's output files. The API does not
-provide endpoints to launch/cancel scans or install tools. API access is
-restricted to localhost.
+CLI scans persist stage-level progress events to the shared scan-history
+database, which the dashboard streams over WebSocket. Events are available for
+scans started after this progress feature is added; older scan records do not
+have historical progress events. The dashboard can edit scope patterns and
+remove scan-history entries. Removing a history entry does not delete that
+scan's output files. The API does not provide endpoints to launch/cancel scans
+or install tools. API access is restricted to localhost.

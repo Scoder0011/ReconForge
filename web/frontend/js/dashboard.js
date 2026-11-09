@@ -2,6 +2,7 @@ import { deleteRequest, element, getJson, showNotice, websocketUrl } from "./api
 import { selectScan } from "./results.js";
 
 let activeSocket = null;
+let inactivityTimer = null;
 
 function formatDate(value) {
   if (!value) return "time unavailable";
@@ -67,24 +68,47 @@ export async function loadScans() {
 
 function watchScan(scan) {
   if (activeSocket) activeSocket.close();
+  if (inactivityTimer) clearTimeout(inactivityTimer);
   document.querySelector("#progress-panel").classList.remove("hidden");
   document.querySelector("#progress-title").textContent = `${scan.target} · ${scan.id}`;
   document.querySelector("#progress-list").replaceChildren(element("div", "empty-state", "Connecting to event stream…"));
   const state = document.querySelector("#ws-state");
   state.textContent = "Connecting";
   activeSocket = new WebSocket(websocketUrl(`/ws/scans/${encodeURIComponent(scan.id)}`));
-  activeSocket.addEventListener("open", () => { state.textContent = "Connected"; });
+  activeSocket.addEventListener("open", () => {
+    state.textContent = "Connected · waiting for events";
+    document.querySelector("#progress-list").replaceChildren(
+      element(
+        "div",
+        "empty-state",
+        "Connected to the progress stream. Stage updates will appear here as the scan runs."
+      )
+    );
+    inactivityTimer = setTimeout(() => {
+      if (activeSocket?.readyState === WebSocket.OPEN) {
+        state.textContent = "No progress events";
+      }
+    }, 5000);
+  });
   activeSocket.addEventListener("message", (message) => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    state.textContent = "Receiving progress";
     try {
       renderEvent(JSON.parse(message.data));
     } catch {
       showNotice("Received an invalid progress event.");
     }
   });
-  activeSocket.addEventListener("close", () => { state.textContent = "Disconnected"; });
+  activeSocket.addEventListener("close", () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    state.textContent = "Disconnected";
+  });
   activeSocket.addEventListener("error", () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
     state.textContent = "Unavailable";
-    showNotice("Live progress is unavailable for this scan. CLI-started scans may not publish events to this server process.");
+    document.querySelector("#progress-list").replaceChildren(
+      element("div", "empty-state", "Could not connect to the progress stream. Check that the local server is running.")
+    );
   });
 }
 
