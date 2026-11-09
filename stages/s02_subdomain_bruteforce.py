@@ -44,6 +44,14 @@ async def run_stage_02(ctx: "ScanContext", known_hostnames: list[str]) -> list[s
                 generated.extend(parser_module.parse(result.raw_output_path))
             except Exception as exc:  # pragma: no cover - keep stage resilient
                 logger.warning("Permutation parser failed for %s: %s", tool.name, exc)
+        max_generated_candidates = 10000
+        if len(generated) > max_generated_candidates:
+            logger.warning(
+                "Stage 02 generated %s permutation hostnames; trimming generated additions to %s",
+                len(generated),
+                max_generated_candidates,
+            )
+            generated = generated[:max_generated_candidates]
         combined = list(dict.fromkeys(known_hostnames + generated))
         kept, dropped = filter_in_scope(combined, ctx.scope)
         ctx.results["permutations"] = kept

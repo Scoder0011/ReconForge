@@ -86,52 +86,83 @@ async def run_stage_03_dns(ctx: ScanContext, hostnames: list[str]) -> list[dict]
         logger.warning("No tools configured for stage 03_dns")
         return []
 
-    with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as handle:
-        for hostname in hostnames:
-            handle.write(f"{hostname}\n")
-        input_path = Path(handle.name)
+    batch_size = 5000
+    records: list[dict] = []
+    ctx.results["dns_timeout"] = False
+    ctx.results["dns_errors"] = []
 
-    try:
-        run_results = await run_tools_parallel(tools, ctx.target, ctx.output_dir / "stage_03", input_file=input_path, status_map=ctx.tool_statuses)
-        records: list[dict] = []
-        for tool in tools:
-            result = run_results.get(tool.name)
-            if result is None or not result.raw_output_path or not result.success:
-                logger.warning("DNS tool %s failed: %s", tool.name, result.error if result else "no result")
-                continue
-            if tool.output.parser != "jsonl":
-                continue
-            try:
-                parser_module = importlib.import_module(f"parsers.{tool.output.parser}")
-                records.extend(parser_module.parse(result.raw_output_path))
-            except Exception as exc:  # pragma: no cover - stage remains resilient to parser issues
-                logger.warning("DNS parser failed for %s: %s", tool.name, exc)
+    for batch_number, offset in enumerate(range(0, len(hostnames), batch_size), start=1):
+        batch = hostnames[offset : offset + batch_size]
+        with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as handle:
+            handle.writelines(f"{hostname}\n" for hostname in batch)
+            input_path = Path(handle.name)
 
-        resolved_records: list[dict] = []
-        seen_hosts: set[str] = set()
-        for record in records:
-            if not isinstance(record, dict):
-                continue
-            host = str(record.get("host") or record.get("hostname") or record.get("name") or "").strip().lower()
-            if not host:
-                continue
-            status = str(record.get("status_code") or "").upper()
-            if status and status != "NOERROR":
-                continue
-            if host in seen_hosts:
-                continue
-            seen_hosts.add(host)
-            resolved_records.append(record)
-
-        ctx.results["dns_records"] = resolved_records
-        dns_path = ctx.output_dir / "dns_records.json"
-        with dns_path.open("w", encoding="utf-8") as handle:
-            json.dump(resolved_records, handle, indent=2)
-        logger.info("Stage 03 complete: %s resolved DNS records", len(resolved_records))
-        return resolved_records
-    finally:
-        if input_path.exists():
+        try:
+            batch_dir = ctx.output_dir / "stage_03" / f"batch_{batch_number:04d}"
+            run_results = await run_tools_parallel(
+                tools,
+                ctx.target,
+                batch_dir,
+                input_file=input_path,
+                status_map=ctx.tool_statuses,
+            )
+            for tool in tools:
+                result = run_results.get(tool.name)
+                if result is None or not result.raw_output_path or not result.success:
+                    error = result.error if result else "no result"
+                    if result and result.error == "timeout":
+                        ctx.results["dns_timeout"] = True
+                    ctx.results["dns_errors"].append(
+                        {"tool": tool.name, "batch": batch_number, "error": error}
+                    )
+                    logger.warning(
+                        "DNS tool %s failed for batch %s: %s",
+                        tool.name,
+                        batch_number,
+                        error,
+                    )
+                    continue
+                if tool.output.parser != "jsonl":
+                    continue
+                try:
+                    parser_module = importlib.import_module(f"parsers.{tool.output.parser}")
+                    records.extend(parser_module.parse(result.raw_output_path))
+                except Exception as exc:  # pragma: no cover - stage remains resilient to parser issues
+                    logger.warning(
+                        "DNS parser failed for %s batch %s: %s",
+                        tool.name,
+                        batch_number,
+                        exc,
+                    )
+        finally:
             input_path.unlink(missing_ok=True)
+
+    resolved_records: list[dict] = []
+    seen_hosts: set[str] = set()
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        host = str(record.get("host") or record.get("hostname") or record.get("name") or "").strip().lower()
+        if not host:
+            continue
+        status = str(record.get("status_code") or "").upper()
+        if status and status != "NOERROR":
+            continue
+        if host in seen_hosts:
+            continue
+        seen_hosts.add(host)
+        resolved_records.append(record)
+
+    ctx.results["dns_records"] = resolved_records
+    dns_path = ctx.output_dir / "dns_records.json"
+    with dns_path.open("w", encoding="utf-8") as handle:
+        json.dump(resolved_records, handle, indent=2)
+    logger.info(
+        "Stage 03 complete: %s resolved DNS records from %s batches",
+        len(resolved_records),
+        (len(hostnames) + batch_size - 1) // batch_size,
+    )
+    return resolved_records
 
 
 async def run_pipeline(
@@ -187,21 +218,57 @@ async def run_pipeline(
 
         dns_records = await run_stage_03_dns(ctx, combined)
         logger.info("Resolved %s DNS records", len(dns_records))
-        await publish({"stage": "03_dns", "status": "complete", "counts": {"resolved": len(dns_records)}})
+        if ctx.results.get("dns_timeout") and not dns_records:
+            await publish({
+                "stage": "03_dns",
+                "status": "failed",
+                "reason": "DNS resolution timed out before any hosts were resolved",
+            })
+        else:
+            await publish({
+                "stage": "03_dns",
+                "status": "complete",
+                "counts": {"resolved": len(dns_records)},
+                "reason": (
+                    f"{len(ctx.results.get('dns_errors', []))} DNS batch(es) failed"
+                    if ctx.results.get("dns_errors")
+                    else ""
+                ),
+            })
 
         live_hosts_task = asyncio.create_task(run_stage_04(ctx, dns_records))
         ports_task = asyncio.create_task(run_stage_05(ctx, dns_records))
         live_hosts, ports_and_tls = await asyncio.gather(live_hosts_task, ports_task)
-        logger.info("Found %s live hosts", len(live_hosts))
+        if dns_records:
+            logger.info("Found %s live hosts", len(live_hosts))
+        else:
+            logger.info("HTTP probing skipped: no hosts resolved by DNS")
         logger.info(
             "Stage 05 produced %s port records and %s TLS certs",
             len(ports_and_tls.get("ports", [])),
             len(ports_and_tls.get("tls", [])),
         )
-        await publish({"stage": "04_http_probing", "status": "complete", "counts": {"live_hosts": len(live_hosts)}})
+        await publish(
+            {
+                "stage": "04_http_probing",
+                "status": "complete" if dns_records else "skipped",
+                "counts": {"live_hosts": len(live_hosts)} if dns_records else {},
+                "reason": "" if dns_records else "No resolved hosts to probe",
+            }
+        )
         if not ctx.scope.allow_active_scans:
             await publish({"stage": "05_ports_infra:naabu+nmap", "status": "skipped", "reason": "active scans not enabled in scope config"})
-        await publish({"stage": "05_ports_infra", "status": "complete", "counts": {"port_records": len(ports_and_tls.get("ports", [])), "tls": len(ports_and_tls.get("tls", []))}})
+        await publish(
+            {
+                "stage": "05_ports_infra",
+                "status": "complete" if dns_records else "skipped",
+                "counts": {
+                    "port_records": len(ports_and_tls.get("ports", [])),
+                    "tls": len(ports_and_tls.get("tls", [])),
+                } if dns_records else {},
+                "reason": "" if dns_records else "No resolved hosts to inspect",
+            }
+        )
 
         screenshots_task = asyncio.create_task(run_stage_06(ctx, live_hosts))
         urls_task = asyncio.create_task(run_stage_07(ctx, live_hosts))
