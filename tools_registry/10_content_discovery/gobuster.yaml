@@ -1,1 +1,20 @@
-# Placeholder only; no command is configured or executed.
+name: gobuster
+stage: 10_content_discovery
+description: "Discover directories and files on an authorized live web host"
+binary: gobuster
+check:
+  command: "{binary} version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install github.com/OJ/gobuster/v3@latest"
+  timeout: 300
+run:
+  command: "{binary} dir -u {target_url} -w {wordlist_path} -o {out} -q -e -s 200,204,301,302,307,401,403"
+  timeout: 300
+output:
+  format: custom
+  parser: gobuster
+requires_api_key: []
+notes: "The stage runs Gobuster only when active scans are explicitly authorized and the target URL matches the configured scope."

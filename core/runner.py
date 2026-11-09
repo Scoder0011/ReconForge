@@ -69,7 +69,7 @@ def _format_run_command(
     if extra_format_fields:
         format_values.update({key: str(value) for key, value in extra_format_fields.items()})
 
-    formatted = tool.run.command.format(**format_values)
+    formatted = tool.run.command.format(**{key: shlex.quote(value) for key, value in format_values.items()})
     if "{input_file}" in tool.run.command and input_file is None:
         raise ValueError(f"{tool.name}: run.command requires {input_file!r} but no input_file was supplied")
     return formatted

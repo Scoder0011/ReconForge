@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 import json
-import yaml
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit, urlunsplit
+
+import yaml
 
 from core.logger import get_logger
 from core.runner import run_tools_parallel
+from core.scope import ScopeConfig, is_in_scope
 
 if TYPE_CHECKING:
     from core.engine import ScanContext
 
 logger = get_logger(__name__)
+
+_DOMAIN_LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 
 
 def _resolve_wordlist_path() -> Path:
@@ -38,8 +44,44 @@ def _resolve_wordlist_path() -> Path:
     return repo_root / "data" / "wordlists" / "common-small.txt"
 
 
+def _validated_target_url(value: object, scope: ScopeConfig) -> str | None:
+    """Return a normalized HTTP URL only when its valid hostname is in scope."""
+    url = str(value or "").strip()
+    if not url or any(ord(char) <= 32 or ord(char) == 127 for char in url):
+        logger.info("Dropped malformed content-discovery target URL")
+        return None
+
+    try:
+        parsed = urlsplit(url)
+        hostname = (parsed.hostname or "").lower().rstrip(".")
+        port = parsed.port
+    except ValueError:
+        logger.info("Dropped malformed content-discovery target URL: %s", url)
+        return None
+
+    labels = hostname.split(".")
+    if (
+        parsed.scheme.lower() not in {"http", "https"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or len(hostname) > 253
+        or len(labels) < 2
+        or any(not _DOMAIN_LABEL.fullmatch(label) for label in labels)
+        or (port is not None and not 1 <= port <= 65535)
+    ):
+        logger.info("Dropped malformed content-discovery target URL: %s", url)
+        return None
+
+    if not is_in_scope(hostname, scope):
+        logger.info("Dropped content-discovery target outside configured scope: %s", url)
+        return None
+
+    netloc = hostname if port is None else f"{hostname}:{port}"
+    return urlunsplit((parsed.scheme.lower(), netloc, parsed.path.rstrip("/"), "", ""))
+
+
 async def run_stage_10(ctx: "ScanContext", live_hosts: list[dict]) -> list[dict]:
-    """Brute-force common paths/files against a small host sample when active scanning is enabled."""
+    """Discover paths on a bounded set of valid, authorized live hosts."""
     if not ctx.scope.allow_active_scans:
         logger.info("stage 10 skipped: active scans not enabled in scope config")
         ctx.results["content_discovery"] = []
@@ -54,7 +96,9 @@ async def run_stage_10(ctx: "ScanContext", live_hosts: list[dict]) -> list[dict]
             continue
         url = host.get("url") or host.get("URL")
         if url:
-            targets.append(str(url).strip())
+            validated_url = _validated_target_url(url, ctx.scope)
+            if validated_url and validated_url not in targets:
+                targets.append(validated_url)
 
     if not targets:
         ctx.results["content_discovery"] = []
@@ -77,6 +121,14 @@ async def run_stage_10(ctx: "ScanContext", live_hosts: list[dict]) -> list[dict]
         return []
 
     wordlist_path = _resolve_wordlist_path()
+    if not wordlist_path.is_file():
+        logger.error("Stage 10 wordlist does not exist or is not a file: %s", wordlist_path)
+        ctx.results["content_discovery"] = []
+        out_path = ctx.output_dir / "content_discovery.json"
+        with out_path.open("w", encoding="utf-8") as handle:
+            json.dump([], handle, indent=2)
+        return []
+
     findings: list[dict] = []
     for target_url in sample_targets:
         results = await run_tools_parallel(
