@@ -74,9 +74,22 @@
       <section id="view-config" class="view" aria-label="Configuration">
         <div class="panel narrow">
           <p class="eyebrow">SCOPE CONFIGURATION</p><h2>Current scope</h2>
-          <div class="warning"><strong>Authorization matters.</strong> Many programs explicitly prohibit automated vulnerability scanners (nuclei, dalfox, etc.) even when manual testing is allowed — read the program's rules before enabling this. Scope changes are intentionally not available in the web console.</div>
+          <div class="warning"><strong>Authorization matters.</strong> Only add assets you own or are explicitly authorized to assess. Many programs prohibit automated vulnerability scanners (nuclei, dalfox, etc.) even when manual testing is allowed. The consent checkbox records authorization, but active scans still require their separate gate and vulnerability scanners are not configured in this implementation.</div>
           <div id="scope-view" class="scope-view"><div class="empty-state">Loading scope configuration…</div></div>
-          <button class="button secondary" disabled>Editing scope via API is unavailable</button>
+          <form id="scope-form" class="scope-form">
+            <label for="scope-in-scope">In-scope domains and subdomains (one per line)</label>
+            <textarea id="scope-in-scope" rows="5" spellcheck="false" placeholder="example.com&#10;*.example.com"></textarea>
+            <p class="muted">If this list is empty, the scan target and its subdomains are used by default.</p>
+            <label for="scope-out-of-scope">Out-of-scope exclusions (one per line)</label>
+            <textarea id="scope-out-of-scope" rows="4" spellcheck="false" placeholder="admin.example.com"></textarea>
+            <p class="muted">Leave this empty to apply no exclusions. The in-scope allowlist still applies.</p>
+            <label class="checkbox-label" for="scope-allow-vuln">
+              <input id="scope-allow-vuln" type="checkbox">
+              I have verified that automated vulnerability scanning is explicitly authorized for these assets.
+            </label>
+            <p class="muted">This records consent alongside the existing active-scan gate. Stage 11 scanners are not configured in this implementation, so enabling this flag alone will not launch them.</p>
+            <button class="button" type="submit">Save scope</button>
+          </form>
         </div>
       </section>
     </main>

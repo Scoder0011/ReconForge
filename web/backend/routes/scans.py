@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response, status
 
-from core.db import get_scan, list_scans
+from core.db import delete_scan, get_scan, list_scans
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
 
@@ -47,3 +47,11 @@ async def scan_detail(scan_id: str) -> dict:
             counts[key] = len(payload) if isinstance(payload, list) else 0
     scan["counts"] = counts
     return scan
+
+
+@router.delete("/{scan_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_scan(scan_id: str) -> Response:
+    """Remove a scan from history; its output directory is intentionally retained."""
+    if not await delete_scan(scan_id):
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

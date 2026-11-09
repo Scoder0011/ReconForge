@@ -89,3 +89,11 @@ async def get_scan(scan_id: str) -> dict[str, Any] | None:
         )
         row = await cursor.fetchone()
     return dict(row) if row is not None else None
+
+
+async def delete_scan(scan_id: str) -> bool:
+    """Delete one scan-history entry without removing its output files."""
+    async with _connection() as connection:
+        cursor = await connection.execute("DELETE FROM scans WHERE id = ?", (scan_id,))
+        await connection.commit()
+        return cursor.rowcount > 0

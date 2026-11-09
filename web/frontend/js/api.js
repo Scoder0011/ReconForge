@@ -16,6 +16,32 @@ export async function getJson(path) {
   return (await apiGet(path)).json();
 }
 
+export async function putJson(path, payload) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "PUT",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`${response.status} ${response.statusText}${body ? `: ${body}` : ""}`);
+  }
+  return response.json();
+}
+
+export async function deleteRequest(path) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`${response.status} ${response.statusText}${body ? `: ${body}` : ""}`);
+  }
+}
+
 export function websocketUrl(path) {
   const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${scheme}//${window.location.host}${path}`;

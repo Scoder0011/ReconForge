@@ -121,6 +121,10 @@ async def _run_recorded_pipeline(domain: str, output_dir: Path, registry_path: P
             git_repo=git_repo,
             progress_callback=publish,
         )
+    except asyncio.CancelledError:
+        await update_scan_status(scan_id, "cancelled")
+        await publish({"stage": "pipeline", "status": "cancelled", "reason": "interrupted by user"})
+        raise
     except Exception:
         await update_scan_status(scan_id, "failed")
         raise
@@ -212,7 +216,11 @@ def main() -> None:
             else:
                 print("Skipping installation and continuing with available tools.")
 
-    scan_id, ctx = asyncio.run(_run_recorded_pipeline(args.domain, output_dir, registry_path, scope_path, args.git_repo))
+    try:
+        scan_id, ctx = asyncio.run(_run_recorded_pipeline(args.domain, output_dir, registry_path, scope_path, args.git_repo))
+    except KeyboardInterrupt:
+        print("Scan interrupted; its history status has been marked cancelled.")
+        return
     report_paths = generate_report(ctx)
     subdomains = ctx.results.get("subdomains", [])
     dns_records = ctx.results.get("dns_records", [])

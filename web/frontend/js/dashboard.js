@@ -1,4 +1,4 @@
-import { element, getJson, showNotice, websocketUrl } from "./api.js";
+import { deleteRequest, element, getJson, showNotice, websocketUrl } from "./api.js";
 import { selectScan } from "./results.js";
 
 let activeSocket = null;
@@ -20,6 +20,29 @@ function renderScan(scan) {
   openButton.type = "button";
   openButton.addEventListener("click", () => selectScan(scan));
   actions.append(openButton);
+  const deleteButton = element("button", "button danger", "Delete history");
+  deleteButton.type = "button";
+  deleteButton.setAttribute("aria-label", `Delete ${scan.target} from scan history`);
+  deleteButton.addEventListener("click", async () => {
+    const confirmed = window.confirm(
+      `Remove the ${scan.target} scan from dashboard history?\n\nThis does not delete its output files.`
+    );
+    if (!confirmed) return;
+    deleteButton.disabled = true;
+    try {
+      await deleteRequest(`/api/scans/${encodeURIComponent(scan.id)}`);
+      if (activeSocket && scan.status === "running") {
+        activeSocket.close();
+        activeSocket = null;
+      }
+      await loadScans();
+      showNotice("Scan removed from history. Its output files were retained.");
+    } catch (error) {
+      deleteButton.disabled = false;
+      showNotice(`Could not delete scan history: ${error.message}`);
+    }
+  });
+  actions.append(deleteButton);
   if (scan.status === "running") {
     const progressButton = element("button", "button secondary", "Live progress");
     progressButton.type = "button";

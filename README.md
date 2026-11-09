@@ -25,8 +25,10 @@ not included because it generates requests to third-party providers.
 
 ## Local API
 
-`python run.py --serve` starts the read-only local API at
+`python run.py --serve` starts the local API at
 `http://127.0.0.1:8000` and its API explorer at `/docs`. It exposes stored CLI
 scan history, results, reports, exports, scope settings, and tool availability.
-It does not provide API endpoints to launch/cancel scans, install tools, or
-modify scope configuration. API access is restricted to localhost.
+The dashboard can edit scope patterns and remove scan-history entries. Removing
+a history entry does not delete that scan's output files. The API does not
+provide endpoints to launch/cancel scans or install tools. API access is
+restricted to localhost.
