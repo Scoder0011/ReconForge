@@ -1,0 +1,4 @@
+{
+  "flags": "-HnrE",
+  "pattern": "(?i)(?:javascript:|onerror=|onload=|srcdoc|<script|alert\\s*\\()"
+}

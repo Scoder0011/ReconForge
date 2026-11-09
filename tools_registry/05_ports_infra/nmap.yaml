@@ -1,0 +1,22 @@
+name: nmap
+stage: 05_ports_infra
+description: "Targeted service detection for open ports found by naabu"
+binary_candidates: ["nmap"]
+signature: "Nmap"
+check:
+  command: "{binary} --version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: apt
+  command: "sudo apt-get install -y nmap"
+  post_install: null
+  manual_instructions: null
+run:
+  command: "{binary} -sV -sT -p {port_list} -oX {out} {target_ip}"
+  timeout: 600
+output:
+  format: xml
+  parser: nmap_xml
+requires_api_key: []
+notes: "This run uses -sT instead of the stealthier -sS so it can run without sudo. That makes the scan a bit slower and more detectable, but keeps it usable for recon without elevated privileges."

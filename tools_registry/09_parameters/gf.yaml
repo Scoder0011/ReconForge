@@ -1,0 +1,20 @@
+name: gf
+stage: 09_parameters
+description: "Filter HTTP parameter output using named grep patterns"
+binary: gf
+check:
+  command: "{binary} -list"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/tomnomnom/gf@latest"
+  timeout: 300
+run:
+  command: "{binary} {pattern_name} < {input_file} > {out}"
+  timeout: 120
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "gf reads patterns from ~/.config/gf or ~/.gf. The stage module copies repo-local starter patterns there before invocation so the first run works offline."

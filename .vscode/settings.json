@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^mkdir -p /home/scoder/Downloads/ReconForge/scripts$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

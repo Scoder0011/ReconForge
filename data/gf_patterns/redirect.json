@@ -1,0 +1,4 @@
+{
+  "flags": "-HnrE",
+  "pattern": "(?i)(?:next=|return=|redirect=|url=|target=|destination=).*(?:https?:|//)"
+}

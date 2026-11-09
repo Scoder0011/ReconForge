@@ -1,0 +1,22 @@
+# Example program scope: define the exact target and exclusions before scanning.
+# `target` is the root domain under test.
+target: example.com
+
+# The safe default is allow_active_scans: false. Only set it to true after you have
+# confirmed the program's rules of engagement and the asset is explicitly in scope.
+allow_active_scans: false
+
+# Many programs explicitly prohibit automated vulnerability scanners (nuclei,
+# dalfox, etc.) even when manual testing is allowed — read the program's rules
+# before enabling this. Stage 11 also requires allow_active_scans: true.
+allow_vuln_scans: false
+
+# Add explicit subdomains or wildcard patterns you are allowed to assess.
+# Example: "*.example.com" and "example.com"
+in_scope:
+  - "*.example.com"
+  - "example.com"
+
+# Add exclusions that should always win, even if they also match an allow rule.
+out_of_scope:
+  - "admin.example.com"

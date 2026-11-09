@@ -1,0 +1,20 @@
+name: gau
+stage: 07_url_collection
+description: "Fetch historical URLs from archive sources for a target domain"
+binary: gau
+check:
+  command: "{binary} --version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/lc/gau/v2/cmd/gau@latest"
+  manual_instructions: null
+run:
+  command: "{binary} {target} --o {out}"
+  timeout: 600
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "Passive archive collection only; gau queries public archives and does not actively crawl the target."

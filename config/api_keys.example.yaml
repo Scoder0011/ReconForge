@@ -1,0 +1,7 @@
+# Example API key names only. Do not put real credentials in this file.
+shodan: ""
+censys: ""
+chaos: ""
+github: ""
+securitytrails: ""
+fofa: ""

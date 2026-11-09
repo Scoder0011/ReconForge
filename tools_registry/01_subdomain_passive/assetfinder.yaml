@@ -1,0 +1,21 @@
+name: assetfinder
+stage: 01_subdomain_passive
+description: "Passive subdomain enumeration from public sources"
+binary: assetfinder
+check:
+  command: "{binary} --help"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/tomnomnom/assetfinder@latest"
+  post_install: null
+  manual_instructions: null
+run:
+  command: "{binary} --subs-only {target} > {out}"
+  timeout: 600
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "assetfinder writes to stdout; a shell redirection is required to save output to {out}."

@@ -1,0 +1,4 @@
+{
+  "flags": "-HnrE",
+  "pattern": "(?i)(?:union\\s+select|select\\s+.*\\s+from|or\\s+1=1|sleep\\s*\\()"
+}

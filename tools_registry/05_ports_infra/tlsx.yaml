@@ -1,0 +1,22 @@
+name: tlsx
+stage: 05_ports_infra
+description: "Fetch TLS certificate metadata for hosts and SAN coverage"
+binary_candidates: ["tlsx"]
+signature: "projectdiscovery"
+check:
+  command: "{binary} -version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/projectdiscovery/tlsx/cmd/tlsx@latest"
+  post_install: null
+  manual_instructions: null
+run:
+  command: "{binary} -l {input_file} -json -o {out}"
+  timeout: 600
+output:
+  format: jsonl
+  parser: jsonl
+requires_api_key: []
+notes: "tlsx is a low-impact TLS handshake tool and is not gated behind allow_active_scans. It collects certificate metadata for hosts that already resolved successfully."

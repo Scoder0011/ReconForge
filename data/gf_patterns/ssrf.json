@@ -1,0 +1,4 @@
+{
+  "flags": "-HnrE",
+  "pattern": "(?i)(?:url=|redirect=|next=|callback=|fetch=|proxy=|target=).*(?:https?:|//|127\\.0\\.0\\.1|localhost|169\\.254|0\\.0\\.0\\.0|::1|file:|ftp:)"
+}

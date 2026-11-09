@@ -1,0 +1,20 @@
+name: gowitness
+stage: 06_screenshots
+description: "Render screenshots for each confirmed live host with a headless browser"
+binary: gowitness
+check:
+  command: "{binary} version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/sensepost/gowitness@latest"
+  manual_instructions: null
+run:
+  command: "{binary} scan file -f {input_file} --chrome-path /usr/bin/chromium --screenshot-path {screenshot_dir} --write-db --write-db-uri sqlite://{out}.db --write-jsonl --write-jsonl-file {out}.jsonl --threads 1 --timeout 30"
+  timeout: 600
+output:
+  format: custom
+  parser: gowitness
+requires_api_key: []
+notes: "Gowitness needs a headless Chrome/Chromium binary on the system; go install only installs the tool itself, not the browser runtime. If Chrome is missing, the scan will produce no screenshots and the stage should log a clear warning instead of crashing."

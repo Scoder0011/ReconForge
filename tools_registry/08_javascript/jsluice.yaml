@@ -1,0 +1,20 @@
+name: jsluice
+stage: 08_javascript
+description: "Extract URLs and secrets from downloaded JavaScript files"
+binary: jsluice
+check:
+  command: "{binary} -h"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/BishopFox/jsluice/cmd/jsluice@latest"
+  manual_instructions: null
+run:
+  command: "{binary} urls {js_file_path}"
+  timeout: 600
+output:
+  format: jsonl
+  parser: jsonl
+requires_api_key: []
+notes: "jsluice operates on local JavaScript files; the stage module must download each JS file before invoking it and then run both the urls and secrets modes."

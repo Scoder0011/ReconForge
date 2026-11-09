@@ -1,0 +1,20 @@
+name: feroxbuster
+stage: 10_content_discovery
+description: "Recursive content discovery with a conservative depth limit"
+binary: feroxbuster
+check:
+  command: "{binary} --help"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: cargo
+  command: "cargo install feroxbuster"
+  timeout: 600
+run:
+  command: "{binary} -u {target_url} -w {wordlist_path} --json -o {out} -d 2"
+  timeout: 300
+output:
+  format: jsonl
+  parser: jsonl
+requires_api_key: []
+notes: "Feroxbuster follows links recursively, but this stage intentionally caps depth to 2 and the host count to the first 10 live hosts to bound request volume."

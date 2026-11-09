@@ -1,0 +1,5 @@
+in_scope:
+  - "scanme.nmap.org"
+  - "*.scanme.nmap.org"
+out_of_scope: []
+allow_active_scans: true

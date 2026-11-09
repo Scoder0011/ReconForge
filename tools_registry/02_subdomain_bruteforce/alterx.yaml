@@ -1,0 +1,21 @@
+name: alterx
+stage: 02_subdomain_bruteforce
+description: "Generate subdomain permutation candidates from known hostnames"
+binary: alterx
+check:
+  command: "{binary} -h"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/projectdiscovery/alterx/cmd/alterx@latest"
+  post_install: null
+  manual_instructions: null
+run:
+  command: "{binary} -l {input_file} -o {out}"
+  timeout: 600
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "Generates plausible permutation candidates for existing subdomains; it does not resolve them."

@@ -1,0 +1,2 @@
+log_level: INFO
+wordlist_path: data/wordlists/common-small.txt

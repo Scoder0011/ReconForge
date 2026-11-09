@@ -1,0 +1,20 @@
+name: katana
+stage: 07_url_collection
+description: "Actively crawl live URLs with a conservative depth limit to discover linked endpoints"
+binary: katana
+check:
+  command: "{binary} -h"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/projectdiscovery/katana/cmd/katana@latest"
+  manual_instructions: null
+run:
+  command: "{binary} -list {input_file} -jsonl -o {out} -depth 2"
+  timeout: 600
+output:
+  format: jsonl
+  parser: jsonl
+requires_api_key: []
+notes: "Katana follows links and can generate many requests per host. It is gated behind allow_active_scans, with a conservative crawl depth to reduce noise."

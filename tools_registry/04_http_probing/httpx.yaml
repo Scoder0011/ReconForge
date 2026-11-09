@@ -1,0 +1,23 @@
+name: httpx
+stage: 04_http_probing
+description: "Probe resolved hosts to detect live HTTP services and metadata"
+binary: null
+binary_candidates: ["httpx-toolkit", "httpx"]
+signature: "projectdiscovery"
+check:
+  command: "{binary} -version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest"
+  post_install: null
+  manual_instructions: null
+run:
+  command: "{binary} -l {input_file} -json -status-code -title -tech-detect -server -o {out}"
+  timeout: 600
+output:
+  format: jsonl
+  parser: jsonl
+requires_api_key: []
+notes: "Kali ships its own unrelated httpx package that can shadow ProjectDiscovery's tool on PATH; httpx-toolkit is Kali's own package made to avoid this, listed first."

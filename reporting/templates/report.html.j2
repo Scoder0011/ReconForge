@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReconForge report — {{ target }}</title>
+  <style>
+    :root { color-scheme: light; --ink:#17212b; --muted:#5e6b75; --line:#d8e0e5; --accent:#145d7a; --skip:#815d00; --bg:#f4f7f9; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,sans-serif; }
+    main { max-width:1100px; margin:2rem auto; padding:0 1.25rem 3rem; }
+    h1,h2,h3 { line-height:1.2; } h1 { color:var(--accent); } h2 { margin-top:2rem; border-bottom:1px solid var(--line); padding-bottom:.4rem; }
+    .meta,.card { background:white; border:1px solid var(--line); border-radius:8px; padding:1rem; }
+    .meta { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; color:var(--muted); }
+    table { width:100%; border-collapse:collapse; background:white; margin:.75rem 0 1.5rem; }
+    th,td { text-align:left; padding:.55rem .65rem; border:1px solid var(--line); vertical-align:top; overflow-wrap:anywhere; }
+    th { background:#eaf1f4; } .skipped { color:var(--skip); font-weight:600; } .ran { color:#17663a; }
+    .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1rem; }
+    figure { margin:0; background:white; padding:.6rem; border:1px solid var(--line); border-radius:8px; }
+    figure img { display:block; width:100%; height:auto; } figcaption { margin-top:.4rem; color:var(--muted); overflow-wrap:anywhere; }
+    code { overflow-wrap:anywhere; } .notice { color:var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ReconForge report</h1>
+  <div class="meta">
+    <span><strong>Target:</strong> {{ target }}</span>
+    <span><strong>Scan timestamp:</strong> {{ timestamp }}</span>
+    <span><strong>Duration:</strong> {{ "%.1f seconds"|format(duration) if duration is not none else "not recorded" }}</span>
+    <span><strong>Active scans:</strong> {{ "enabled" if scope.allow_active_scans else "disabled" }}</span>
+    <span><strong>Vulnerability scans:</strong> {{ "enabled" if scope.allow_vuln_scans else "disabled" }}</span>
+  </div>
+
+  <h2>Summary</h2>
+  <table><thead><tr><th>Stage</th><th>Status</th><th>Findings</th></tr></thead><tbody>
+  {% for stage in stages %}
+    <tr><td>{{ stage.name }}</td><td class="{{ stage.status }}">{{ stage.status }}</td><td>{{ stage.result }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+
+  <h2>Subdomains</h2>
+  <table><thead><tr><th>Hostname</th><th>Discovered by</th></tr></thead><tbody>
+  {% for item in subdomains %}<tr><td>{{ item.hostname }}</td><td>{{ item.tools|join(", ") if item.tools else "source not recorded" }}</td></tr>
+  {% else %}<tr><td colspan="2" class="notice">No subdomains recorded.</td></tr>{% endfor %}
+  </tbody></table>
+
+  <h2>Live hosts</h2>
+  <table><thead><tr><th>URL</th><th>Status</th><th>Title</th><th>Technologies</th></tr></thead><tbody>
+  {% for host in live_hosts %}
+  <tr><td>{{ host.url|default(host.input|default("—")) }}</td><td>{{ host.status_code|default("—") }}</td><td>{{ host.title|default("—") }}</td><td>{{ host.tech|default(host.technologies|default([]))|join(", ") }}</td></tr>
+  {% else %}<tr><td colspan="4" class="notice">No live hosts recorded.</td></tr>{% endfor %}
+  </tbody></table>
+
+  <h2>Screenshots</h2>
+  <div class="gallery">
+  {% for item in screenshots %}
+    {% if item.report_path %}
+    <figure><img src="{{ item.report_path }}" alt="Screenshot of {{ item.url|default('live host') }}" loading="lazy"><figcaption>{{ item.url|default(item.report_path) }}</figcaption></figure>
+    {% else %}<p class="notice">Screenshot path unavailable for {{ item.url|default("entry") }}.</p>{% endif %}
+  {% else %}<p class="notice">Skipped or no screenshots recorded.</p>{% endfor %}
+  </div>
+
+  <h2>Ports and TLS</h2>
+  <h3>Open ports</h3>
+  <table><thead><tr><th>IP</th><th>Port</th><th>Protocol</th><th>Service</th><th>Product / version</th></tr></thead><tbody>
+  {% set has_ports = namespace(value=false) %}
+  {% for host in ports %}{% for port in host.ports|default([]) %}
+    {% set has_ports.value = true %}
+    <tr><td>{{ host.ip|default("—") }}</td><td>{{ port.port|default("—") }}</td><td>{{ port.protocol|default("—") }}</td><td>{{ port.service|default("—") }}</td><td>{{ port.product|default("") }} {{ port.version|default("") }}</td></tr>
+  {% endfor %}{% endfor %}
+  {% if not has_ports.value %}<tr><td colspan="5" class="notice">No open-port records.</td></tr>{% endif %}
+  </tbody></table>
+  <h3>TLS certificates</h3>
+  <table><thead><tr><th>Host</th><th>Subject</th><th>Issuer</th><th>Expiry</th><th>Status</th></tr></thead><tbody>
+  {% for cert in tls %}
+  <tr><td>{{ cert.host|default(cert.input|default("—")) }}</td><td>{{ cert.subject|default("—") }}</td><td>{{ cert.issuer|default("—") }}</td><td>{{ cert.not_after|default(cert.expiry|default(cert.expiration|default("—"))) }}</td><td>{% if cert.expiring_soon %}<strong>Expires in {{ cert.days_remaining }} days</strong>{% else %}{{ cert.days_remaining|string + " days remaining" if cert.days_remaining is not none else "—" }}{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="notice">No TLS certificate records.</td></tr>{% endfor %}
+  </tbody></table>
+
+  <h2>URLs and JavaScript</h2>
+  <p>{{ url_total }} URLs collected; showing up to 50. {{ js_endpoints|length }} JavaScript endpoints; showing up to 50. {{ js_secrets_count }} JavaScript secret candidates, types: {{ js_secret_types|join(", ") if js_secret_types else "none" }}. Secret values are omitted.</p>
+  <h3>URL sample</h3><ul>{% for url in url_sample %}<li><code>{{ url }}</code></li>{% else %}<li class="notice">No URLs recorded.</li>{% endfor %}</ul>
+  <h3>JavaScript endpoint sample</h3><ul>{% for endpoint in js_endpoint_sample %}<li><code>{{ endpoint.endpoint|default(endpoint.url|default(endpoint)) if endpoint is mapping else endpoint }}</code></li>{% else %}<li class="notice">No endpoints recorded.</li>{% endfor %}</ul>
+  <p class="notice">{{ raw_files_note }}</p>
+
+  <h2>Parameters and content discovery</h2>
+  <p>Parameter findings: {{ param_count }}. Content-discovery findings: {{ content|length }} (sample capped at 50).</p>
+  <ul>{% for item in content_sample %}<li><code>{{ item.url|default(item.path|default(item)) if item is mapping else item }}</code></li>{% else %}<li class="notice">No content-discovery entries recorded.</li>{% endfor %}</ul>
+
+  <h2>Vulnerability findings</h2>
+  {% if vuln_status == "skipped" or vuln_status == "not_configured" %}
+  <p class="skipped">Stage 11 {{ vuln_status }} — {{ vuln_reason }}.</p>
+  {% elif vuln_findings %}
+  <table><thead><tr><th>Severity</th><th>Tool</th><th>Finding</th></tr></thead><tbody>
+  {% for finding in vuln_findings %}<tr><td>{{ finding.severity }}</td><td>{{ finding.tool|default("—") }}</td><td>{{ finding.name|default(finding.template_id|default(finding.matched_at|default("finding"))) }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p>Ran, found 0 findings.</p>{% endif %}
+
+  <h2>Cloud and secrets</h2>
+  <p>Cloud bucket findings: {{ buckets|length }}. Local Git secret findings: {{ git_secret_count }}; types: {{ git_secret_types|join(", ") if git_secret_types else "none" }}. Secret values are never included.</p>
+  <ul>{% for bucket in buckets %}<li>{{ bucket.name|default(bucket.bucket|default(bucket)) if bucket is mapping else bucket }}</li>{% else %}<li class="notice">No bucket findings recorded.</li>{% endfor %}</ul>
+
+  <h2>OSINT</h2>
+  <p>Emails: {{ osint_emails|length }}; hosts: {{ osint_hosts|length }}.</p>
+  <h3>Email sample</h3><ul>{% for email in osint_emails[:50] %}<li>{{ email }}</li>{% else %}<li class="notice">No email data recorded.</li>{% endfor %}</ul>
+  <h3>Host sample</h3><ul>{% for host in osint_hosts[:50] %}<li><code>{{ host }}</code></li>{% else %}<li class="notice">No OSINT hosts recorded.</li>{% endfor %}</ul>
+  <h3>WHOIS summary</h3><pre>{{ osint_whois|tojson(indent=2) if osint_whois else "Not recorded" }}</pre>
+
+  <hr><p class="notice">Generated by ReconForge. Full stage outputs are in the scan directory.</p>
+</main>
+</body>
+</html>

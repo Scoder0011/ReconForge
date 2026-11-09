@@ -1,0 +1,20 @@
+name: subjs
+stage: 08_javascript
+description: "Filter a URL list down to JavaScript endpoints that subjs can identify"
+binary: subjs
+check:
+  command: "{binary} -h"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/lc/subjs@latest"
+  manual_instructions: null
+run:
+  command: "{binary} -i {input_file} -o {out}"
+  timeout: 600
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "subjs works from a URL list and helps find JavaScript endpoints even when the URL doesn’t obviously end in .js."

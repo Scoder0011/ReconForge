@@ -1,0 +1,1 @@
+"""Passive subdomain stage placeholder."""

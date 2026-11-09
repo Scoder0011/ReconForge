@@ -1,0 +1,21 @@
+name: subfinder
+stage: 01_subdomain_passive
+description: "Passive subdomain enumeration via public sources"
+binary: subfinder
+check:
+  command: "{binary} -version"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: go
+  command: "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
+  post_install: null
+  manual_instructions: null
+run:
+  command: "{binary} -d {target} -all -silent -o {out}"
+  timeout: 600
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "Passive subdomain enumeration via public sources."

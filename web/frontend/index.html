@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>ReconForge</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" data-view="dashboard"><span class="brand-mark">RF</span><span>ReconForge<small>LOCAL RECON CONSOLE</small></span></a>
+      <nav aria-label="Main navigation">
+        <button class="nav-link active" data-view="dashboard"><span>◫</span> Dashboard</button>
+        <button class="nav-link" data-view="new-scan"><span>＋</span> New scan</button>
+        <button class="nav-link" data-view="tools"><span>⌘</span> Tools</button>
+        <button class="nav-link" data-view="config"><span>⚙</span> Config</button>
+      </nav>
+      <div class="sidebar-foot"><span class="local-dot"></span> Local API · 127.0.0.1</div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div><p class="eyebrow">RECON WORKSPACE</p><h1 id="page-title">Dashboard</h1></div>
+        <button class="button secondary" id="refresh-button">Refresh</button>
+      </header>
+      <div id="notice" class="notice hidden" role="status"></div>
+      <section id="view-dashboard" class="view active" aria-label="Dashboard">
+        <div class="welcome-row">
+          <div><h2>Scan history</h2><p class="muted">Previously recorded CLI runs and their available outputs.</p></div>
+          <button class="button" data-view="new-scan">＋ New scan</button>
+        </div>
+        <div id="scan-list" class="scan-list"><div class="empty-state">Loading scan history…</div></div>
+        <section id="progress-panel" class="panel hidden">
+          <div class="panel-heading"><div><p class="eyebrow">LIVE EVENTS</p><h2 id="progress-title">Scan progress</h2></div><span id="ws-state" class="status-pill">Disconnected</span></div>
+          <div id="progress-list" class="progress-list"></div>
+        </section>
+        <section id="results-panel" class="panel hidden">
+          <div class="panel-heading"><div><p class="eyebrow">SCAN OUTPUT</p><h2 id="selected-scan-title">Results</h2></div>
+            <div class="button-row"><a id="report-link" class="button secondary" target="_blank" rel="noopener">View report</a>
+              <label class="sr-only" for="export-format">Export format</label><select id="export-format"><option value="">Export…</option><option value="md">Markdown</option><option value="html">HTML</option><option value="json">JSON</option></select>
+            </div>
+          </div>
+          <div id="result-tabs" class="tabs"></div>
+          <div class="table-tools"><input id="result-filter" type="search" placeholder="Filter results…" aria-label="Filter results"><span id="result-count" class="muted"></span></div>
+          <div id="result-table" class="table-wrap"><div class="empty-state">Choose a scan to browse its output.</div></div>
+        </section>
+      </section>
+
+      <section id="view-new-scan" class="view" aria-label="New scan">
+        <div class="panel narrow">
+          <p class="eyebrow">NEW SCAN</p><h2>Start from the CLI</h2>
+          <p>The API is currently read-only. Scan launch and cancellation are unavailable here. Run ReconForge from a terminal to start a scan; completed CLI runs appear in Dashboard history.</p>
+          <pre><code>python run.py -d yourdomain.com</code></pre>
+          <p class="muted">Do not scan a target unless it is explicitly in scope and you have authorization. The web console cannot change scope or authorization flags.</p>
+          <form id="scan-form" class="disabled-form" aria-disabled="true">
+            <label>Target domain<input name="target" placeholder="example.com" disabled></label>
+            <label>Profile<select name="profile" disabled><option>quick</option><option>full</option><option>stealth</option></select></label>
+            <label>Local Git repository (optional)<input name="git_repo" placeholder="/path/to/repository" disabled></label>
+            <button class="button" type="submit" disabled>Start scan — unavailable</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="view-tools" class="view" aria-label="Tools">
+        <div class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">ENVIRONMENT</p><h2>Registered tools</h2></div><button id="tools-refresh" class="button secondary">Check again</button></div>
+          <p class="muted">Status checks validate installed binaries. Tool installation is not exposed by this API.</p>
+          <div id="tools-table" class="table-wrap"><div class="empty-state">Loading tool status…</div></div>
+        </div>
+      </section>
+
+      <section id="view-config" class="view" aria-label="Configuration">
+        <div class="panel narrow">
+          <p class="eyebrow">SCOPE CONFIGURATION</p><h2>Current scope</h2>
+          <div class="warning"><strong>Authorization matters.</strong> Many programs explicitly prohibit automated vulnerability scanners (nuclei, dalfox, etc.) even when manual testing is allowed — read the program's rules before enabling this. Scope changes are intentionally not available in the web console.</div>
+          <div id="scope-view" class="scope-view"><div class="empty-state">Loading scope configuration…</div></div>
+          <button class="button secondary" disabled>Editing scope via API is unavailable</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

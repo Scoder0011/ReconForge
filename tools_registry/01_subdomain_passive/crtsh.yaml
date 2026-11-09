@@ -1,0 +1,21 @@
+name: crtsh
+stage: 01_subdomain_passive
+description: "Query crt.sh for subdomains via HTTPS JSON output"
+binary: null
+check:
+  command: null
+  success_returncode: 0
+  timeout: 10
+install:
+  method: manual
+  command: null
+  post_install: null
+  manual_instructions: "No install needed — queried directly over HTTPS."
+run:
+  command: "__builtin_http__:crtsh"
+  timeout: 600
+output:
+  format: jsonl
+  parser: plain_lines
+requires_api_key: []
+notes: "This tool is handled specially by a built-in fetcher in core/runner.py; it is not spawned as a subprocess. TODO: implemented in Phase 2 runner.py"

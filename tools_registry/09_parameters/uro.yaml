@@ -1,0 +1,20 @@
+name: uro
+stage: 09_parameters
+description: "Deduplicate URL variants before parameter analysis"
+binary: uro
+check:
+  command: "{binary} --help"
+  success_returncode: 0
+  timeout: 10
+install:
+  method: pip
+  command: "pip install uro"
+  timeout: 300
+run:
+  command: "{binary} -i {input_file} -o {out}"
+  timeout: 120
+output:
+  format: plain_lines
+  parser: plain_lines
+requires_api_key: []
+notes: "uro is run before gf so pattern matching operates on a cleaner, smaller URL set."

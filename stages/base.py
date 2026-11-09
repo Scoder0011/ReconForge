@@ -1,0 +1,1 @@
+"""Shared stage interface placeholder."""
